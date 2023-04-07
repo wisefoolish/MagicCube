@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        var LButton=false;
+var line_color='#000000';
+var fill_color='#000000';
+var background_color='#000000';
+var mouse_place={xx:0,yy:0};
+var GAMEPAD=60;
+var sidelength=200;
+var PerspectiveDistance=sidelength*5;
+var up=0;
+var down=1;
+var left=2;
+var right=3;
+var front=4;
+var back=5;
+var across=0;
+var straight=1;
+var vertical=2;
+var SurfaceColor=['#ffff00','#d6d6d6','#ff0000','#ff7f27','#0000ff','#00ff00'];
+function InitCanvas()
+{
+    var canvas=document.getElementById('canvas');
+    var width=canvas.clientWidth;
+    var height=canvas.clientHeight;
+    fill_color=background_color;
+    FillRectangle({xx:width/2,yy:height/2},{width:width,height:height});
+}
+
+function PutPixel(x,y,color)
+{
+    var canvas=document.getElementById('canvas');
+    var hdc=canvas.getContext("2d");
+    hdc.fillStyle=color;
+    hdc.fillRect(x,y,1,1);
+}
+
+function Line(begin,end)
+{
+    var canvas=document.getElementById('canvas');
+    var hdc=canvas.getContext("2d");
+    hdc.strokeStyle=line_color;
+    hdc.beginPath();
+    hdc.moveTo(begin.xx,begin.yy);
+    hdc.lineTo(end.xx,end.yy);
+    hdc.stroke();
+}
+
+function Rectangle(pericenter,size)
+{
+    var canvas=document.getElementById('canvas');
+    var hdc=canvas.getContext("2d");
+    var left=pericenter.xx-size.width/2;
+    var top=pericenter.yy-size.height/2;
+    var right=pericenter.xx+size.width/2;
+    var bottom=pericenter.yy+size.height/2;
+    hdc.strokeStyle=line_color;
+    hdc.beginPath();
+    hdc.moveTo(left,top);
+    hdc.lineTo(right,top);
+    hdc.lineTo(right,bottom);
+    hdc.lineTo(left,bottom);
+    hdc.lineTo(left,top);
+    hdc.stroke();
+}
+
+function FillRectangle(pericenter,size)
+{
+    var canvas=document.getElementById('canvas');
+    var hdc=canvas.getContext("2d");
+    var left=pericenter.xx-size.width/2;
+    var top=pericenter.yy-size.height/2;
+    var right=pericenter.xx+size.width/2;
+    var bottom=pericenter.yy+size.height/2;
+    hdc.fillStyle=fill_color;
+    hdc.beginPath();
+    hdc.moveTo(left,top);
+    hdc.lineTo(right,top);
+    hdc.lineTo(right,bottom);
+    hdc.lineTo(left,bottom);
+    hdc.lineTo(left,top);
+    hdc.fill();
+}
+
+function Circle(pericenter,radius)
+{
+    var canvas=document.getElementById('canvas');
+    var hdc=canvas.getContext("2d");
+    hdc.strokeStyle=line_color;
+    hdc.beginPath();
+    hdc.arc(pericenter.xx,pericenter.yy,radius,0,2*Math.PI,true);
+    //hdc.closePath();
+    hdc.stroke();
+}
+
+function FillCircle(pericenter,radius)
+{
+    var canvas=document.getElementById('canvas');
+    var hdc=canvas.getContext("2d");
+    hdc.fillStyle=fill_color;
+    hdc.beginPath();
+    hdc.arc(pericenter.xx,pericenter.yy,radius,0,2*Math.PI,true);
+    hdc.fill();
+}
+
+function Polygon(pointarr)
+{
+    var canvas=document.getElementById('canvas');
+    var hdc=canvas.getContext("2d");
+    hdc.strokeStyle=line_color;
+    hdc.beginPath();
+    hdc.moveTo(pointarr[0].xx,pointarr[0].yy);
+    for(var i=1;i<=pointarr.length;i++)
+    {
+        var temp=pointarr[i%pointarr.length];
+        hdc.lineTo(temp.xx,temp.yy);
+    }
+    hdc.stroke();
+}
+
+function FillPolygon(pointarr)
+{
+    var canvas=document.getElementById('canvas');
+    var hdc=canvas.getContext("2d");
+    hdc.fillStyle=fill_color;
+    hdc.beginPath();
+    hdc.moveTo(pointarr[0].xx,pointarr[0].yy);
+    for(var i=1;i<=pointarr.length;i++)
+    {
+        var temp=pointarr[i%pointarr.length];
+        //console.log(temp);
+        hdc.lineTo(temp.xx,temp.yy);
+    }
+    hdc.fill();
+}
+
+function Vec2(xx,yy)
+{
+    this.xx=xx;
+    this.yy=yy;
+    this.GetLength=function()
+    {
+        return Math.sqrt(this.xx*this.xx+this.yy*this.yy);
+    }
+    this.Add=function(ano)
+    {
+        return new Vec2(ano.xx+this.xx,ano.yy+this.yy);
+    }
+    this.Sub=function(ano)
+    {
+        return new Vec2(this.xx-ano.xx,this.yy-ano.yy);
+    }
+    this.Mul=function(ano)
+    {
+        return this.xx*ano.xx+this.yy*ano.yy;
+    }
+    this.Div=function(times)
+    {
+        return new Vec2(this.xx/times,this.yy/times);
+    }
+    this.MulTimes=function(times)
+    {
+        return new Vec2(this.xx*times,this.yy*times);
+    }
+    this.GetCosBetween=function(ano)
+    {
+        return this.Mul(ano)/this.GetLength()/ano.GetLength();
+    }
+}
+
+function Vec3(xx,yy,zz)
+{
+    this.xx=xx;
+    this.yy=yy;
+    this.zz=zz;
+    this.GetLength=function()
+    {
+        return Math.sqrt(this.xx*this.xx+this.yy*this.yy+this.zz*this.zz);
+    }
+    this.Add=function(ano)
+    {
+        return new Vec3(ano.xx+this.xx,ano.yy+this.yy,ano.zz+this.zz);
+    }
+    this.Sub=function(ano)
+    {
+        return new Vec3(this.xx-ano.xx,this.yy-ano.yy,this.zz-ano.zz);
+    }
+    this.Mul=function(ano)
+    {
+        return this.xx*ano.xx+this.yy*ano.yy+this.zz*ano.zz;
+    }
+    this.Div=function(times)
+    {
+        return new Vec3(this.xx/times,this.yy/times,this.zz/times);
+    }
+    this.MulTimes=function(times)
+    {
+        return new Vec3(this.xx*times,this.yy*times,this.zz*times);
+    }
+    this.GetUnitVector=function()
+    {
+        return this.Div(this.GetLength());
+    }
+    this.GetCosBetween=function(ano)
+    {
+        return this.Mul(ano)/this.GetLength()/ano.GetLength();
+    }
+    this.GetProjection=function(ano)
+    {
+        return ano.MulTimes(this.Mul(ano)/ano.GetLength()/ano.GetLength());
+    }
+    this.GetProjectionLen=function(ano)
+    {
+        return this.Mul(ano)/ano.GetLength();
+    }
+    this.CrossMul=function(ano)
+    {
+        return new Vec3(this.yy*ano.zz-ano.yy*this.zz,this.zz*ano.xx-this.xx*ano.zz,this.xx*ano.yy-this.yy*ano.xx);
+    }
+}
+
+function IsInQuadrangle(vertex,xx,yy)
+{
+    // 重心法，如果判断能是负数就能判断平行四边形
+    // 每条线相差0.5个像素也许可以填充平行四边形
+    // 构造三角形
+    var triangle_1=[vertex[0],vertex[1],vertex[3]];
+    var triangle_2=[vertex[2],vertex[3],vertex[1]];
+    var vec_side_1=triangle_1[1].Sub(triangle_1[0]);
+    var vec_side_2=triangle_1[2].Sub(triangle_1[0]);
+    var vec_1=(new Vec2(xx,yy)).Sub(triangle_1[0]);
+    //vec_side_1*m+vec_side_2*n=vec_1
+    var n=(vec_1.xx*vec_side_1.yy-vec_1.yy*vec_side_1.xx)/(vec_side_2.xx*vec_side_1.yy-vec_side_2.yy*vec_side_1.xx);
+    var m=(vec_1.yy*vec_side_2.xx-vec_1.xx*vec_side_2.yy)/(vec_side_2.xx*vec_side_1.yy-vec_side_2.yy*vec_side_1.xx);
+    if(n>=0&&m>=0&&n+m<=1)return true;
+    vec_side_1=triangle_2[1].Sub(triangle_2[0]);
+    vec_side_2=triangle_2[2].Sub(triangle_2[0]);
+    vec_1=(new Vec2(xx,yy)).Sub(triangle_2[0]);
+    //vec_side_1*m+vec_side_2*n=vec_1
+    n=(vec_1.xx*vec_side_1.yy-vec_1.yy*vec_side_1.xx)/(vec_side_2.xx*vec_side_1.yy-vec_side_2.yy*vec_side_1.xx);
+    m=(vec_1.yy*vec_side_2.xx-vec_1.xx*vec_side_2.yy)/(vec_side_2.xx*vec_side_1.yy-vec_side_2.yy*vec_side_1.xx);
+    if(n>=0&&m>=0&&n+m<=1)return true;
+    return false;
+}
+
+function TransformVec3ToVec2(vector_x,vector_y,vec_3)
+{
+    var vector_z=vector_x.CrossMul(vector_y).GetUnitVector().MulTimes(PerspectiveDistance);
+    var temp_vertex=vec_3.Sub(vector_z);
+    var times=PerspectiveDistance/Math.abs(temp_vertex.GetProjectionLen(vector_z));
+    var temp_vec2=new Vec2(temp_vertex.GetProjectionLen(vector_x),temp_vertex.GetProjectionLen(vector_y));
+    return temp_vec2.MulTimes(times);
+}
+
+function GetSurfaceIndex(vector_x,vector_y,xx,yy,vertex,pericenter)
+{
+    var add_x=vertex[1].Sub(vertex[0]).Div(3);
+    var add_y=vertex[3].Sub(vertex[0]).Div(3);
+    var across=-1;
+    var straight=-1;
+    for(var i=0;i<3;i++)
+    {
+        var temp_vec2=[TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_x.MulTimes(i))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_x.MulTimes(i+1))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[3].Add(add_x.MulTimes(i+1))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[3].Add(add_x.MulTimes(i))).Add(pericenter)];
+        if(IsInQuadrangle(temp_vec2,xx,yy))
+        {
+            across=i;
+            break;
+        }
+    }
+    if(across==-1)return -1;
+    for(var i=0;i<3;i++)
+    {
+        var temp_vec2=[TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_y.MulTimes(i))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[1].Add(add_y.MulTimes(i))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[1].Add(add_y.MulTimes(i+1))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_y.MulTimes(i+1))).Add(pericenter)];
+        if(IsInQuadrangle(temp_vec2,xx,yy))
+        {
+            straight=i;
+            break;
+        }
+    }
+    if(straight==-1)return -1;
+    return straight*3+across;
+}
+
+function GetPlaneIndex(vector_x,vector_y,xx,yy,vertex,pericenter)
+{
+    var vector_z=vector_x.CrossMul(vector_y);
+    var vertex_vec2=[TransformVec3ToVec2(vector_x,vector_y,vertex[0]).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[1]).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[2]).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[3]).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[4]).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[5]).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[6]).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[7]).Add(pericenter)];
+    if(vector_z.xx>sidelength/PerspectiveDistance/2)
+    {
+        if(IsInQuadrangle([vertex_vec2[1],vertex_vec2[2],vertex_vec2[6],vertex_vec2[5]],xx,yy))
+        {
+            return {surface:right,index:GetSurfaceIndex(vector_x,vector_y,xx,yy,
+                [vertex[1],vertex[2],vertex[6],vertex[5]],pericenter)};
+        }
+    }
+    else if(vector_z.xx<-sidelength/PerspectiveDistance/2)
+    {
+        if(IsInQuadrangle([vertex_vec2[0],vertex_vec2[3],vertex_vec2[7],vertex_vec2[4]],xx,yy))
+        {
+            return {surface:left,index:GetSurfaceIndex(vector_x,vector_y,xx,yy,
+                [vertex[0],vertex[3],vertex[7],vertex[4]],pericenter)};
+        }
+    }
+    if(vector_z.yy>sidelength/PerspectiveDistance/2)
+    {
+        if(IsInQuadrangle([vertex_vec2[3],vertex_vec2[2],vertex_vec2[6],vertex_vec2[7]],xx,yy))
+        {
+            return {surface:back,index:GetSurfaceIndex(vector_x,vector_y,xx,yy,
+                [vertex[3],vertex[2],vertex[6],vertex[7]],pericenter)};
+        }
+    }
+    else if(vector_z.yy<-sidelength/PerspectiveDistance/2)
+    {
+        if(IsInQuadrangle([vertex_vec2[0],vertex_vec2[1],vertex_vec2[5],vertex_vec2[4]],xx,yy))
+        {
+            return {surface:front,index:GetSurfaceIndex(vector_x,vector_y,xx,yy,
+                [vertex[0],vertex[1],vertex[5],vertex[4]],pericenter)};
+        }
+    }
+    if(vector_z.zz>sidelength/PerspectiveDistance/2)
+    {
+        if(IsInQuadrangle([vertex_vec2[4],vertex_vec2[5],vertex_vec2[6],vertex_vec2[7]],xx,yy))
+        {
+            return {surface:up,index:GetSurfaceIndex(vector_x,vector_y,xx,yy,
+                [vertex[4],vertex[5],vertex[6],vertex[7]],pericenter)};
+        }
+    }
+    else if(vector_z.zz<-sidelength/PerspectiveDistance/2)
+    {
+        if(IsInQuadrangle([vertex_vec2[0],vertex_vec2[1],vertex_vec2[2],vertex_vec2[3]],xx,yy))
+        {
+            return {surface:down,index:GetSurfaceIndex(vector_x,vector_y,xx,yy,
+                [vertex[0],vertex[1],vertex[2],vertex[3]],pericenter)};
+        }
+    }
+    return {surface:-1,index:-1};
+}
+
+function Rotate_Across_Hor(vector_x,vector_y,angle)
+{
+    var vector_z=vector_x.CrossMul(vector_y);
+    var result=vector_x.MulTimes(Math.cos(angle)).Add(vector_z.MulTimes(Math.sin(angle)));
+    return result.GetUnitVector();
+}
+function Rotate_Across_Ver(vector_x,vector_y,angle)
+{
+    var vector_z=vector_y.CrossMul(vector_x);
+    var result=vector_y.MulTimes(Math.cos(angle)).Sub(vector_z.MulTimes(Math.sin(angle)));
+    return result.GetUnitVector();
+}
+function DrawSurface(vector_x,vector_y,surface,colorarr,pericenter)
+{
+    var add_x=surface[1].Sub(surface[0]).Div(3);
+    var add_y=surface[3].Sub(surface[0]).Div(3);
+    var add_full=surface[2].Sub(surface[0]).Div(3);
+    for(var i=0;i<3;i++)
+    {
+        for(var j=0;j<3;j++)
+        {
+            var begin=surface[0].Add(add_x.MulTimes(j)).Add(add_y.MulTimes(i));
+            var temp_point=[TransformVec3ToVec2(vector_x,vector_y,begin).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,begin.Add(add_x)).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,begin.Add(add_full)).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,begin.Add(add_y)).Add(pericenter)];
+            fill_color=colorarr[i*3+j];
+            FillPolygon(temp_point);
+            Polygon(temp_point);
+        }
+    }
+}
+function DrawCube(vector_x,vector_y,vertex,colorarr,pericenter)
+{
+    var vector_z=vector_x.CrossMul(vector_y);
+    line_color='#000000';
+    if(vector_z.xx>sidelength/PerspectiveDistance/2)
+    {
+        DrawSurface(vector_x,vector_y,[vertex[1],vertex[2],vertex[6],vertex[5]],colorarr[right],pericenter);
+    }
+    else if(vector_z.xx<-sidelength/PerspectiveDistance/2)
+    {
+        DrawSurface(vector_x,vector_y,[vertex[0],vertex[3],vertex[7],vertex[4]],colorarr[left],pericenter);
+    }
+    if(vector_z.yy>sidelength/PerspectiveDistance/2)
+    {
+        DrawSurface(vector_x,vector_y,[vertex[3],vertex[2],vertex[6],vertex[7]],colorarr[back],pericenter);
+    }
+    else if(vector_z.yy<-sidelength/PerspectiveDistance/2)
+    {
+        DrawSurface(vector_x,vector_y,[vertex[0],vertex[1],vertex[5],vertex[4]],colorarr[front],pericenter);
+    }
+    if(vector_z.zz>sidelength/PerspectiveDistance/2)
+    {
+        DrawSurface(vector_x,vector_y,[vertex[4],vertex[5],vertex[6],vertex[7]],colorarr[up],pericenter);
+    }
+    else if(vector_z.zz<-sidelength/PerspectiveDistance/2)
+    {
+        DrawSurface(vector_x,vector_y,[vertex[0],vertex[1],vertex[2],vertex[3]],colorarr[down],pericenter);
+    }
+}
+
+function DrawBar_Hori(vector_x,vector_y,vertex,colorarr,pericenter)
+{
+    var add_x=vertex[1].Sub(vertex[0]).Div(3);
+    for(var i=0;i<3;i++)
+    {
+        TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_x.MulTimes(i))).Add(pericenter);
+        fill_color=colorarr[i];
+        FillPolygon([TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_x.MulTimes(i))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_x.MulTimes(i+1))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[3].Add(add_x.MulTimes(i+1))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[3].Add(add_x.MulTimes(i))).Add(pericenter)]);
+        Polygon([TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_x.MulTimes(i))).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_x.MulTimes(i+1))).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,vertex[3].Add(add_x.MulTimes(i+1))).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,vertex[3].Add(add_x.MulTimes(i))).Add(pericenter)]);
+    }
+}
+
+function DrawBar_Vert(vector_x,vector_y,vertex,colorarr,pericenter)
+{
+    var add_y=vertex[3].Sub(vertex[0]).Div(3);
+    for(var i=0;i<3;i++)
+    {
+        TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_y.MulTimes(i))).Add(pericenter);
+        fill_color=colorarr[i];
+        FillPolygon([TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_y.MulTimes(i))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[1].Add(add_y.MulTimes(i))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[1].Add(add_y.MulTimes(i+1))).Add(pericenter),
+                    TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_y.MulTimes(i+1))).Add(pericenter)]);
+        Polygon([TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_y.MulTimes(i))).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,vertex[1].Add(add_y.MulTimes(i))).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,vertex[1].Add(add_y.MulTimes(i+1))).Add(pericenter),
+                TransformVec3ToVec2(vector_x,vector_y,vertex[0].Add(add_y.MulTimes(i+1))).Add(pericenter)]);
+    }
+}
+
+function DrawLayer_Across(vector_x,vector_y,vertex,pericenter,colorarr,ninecolor)
+{
+    var vector_z=vector_x.CrossMul(vector_y);
+    // 我目前想不出更好的方法，还是沿用先前的创造
+    var up_vec=vertex[4].Sub(vertex[0]);
+    var back_vec=vertex[3].Sub(vertex[0]);
+
+    if(vector_z.GetCosBetween(up_vec)>sidelength/PerspectiveDistance/2) // 画上面
+        DrawBar_Vert(vector_x,vector_y,[vertex[4],vertex[5],vertex[6],vertex[7]],colorarr[0],pericenter);
+    else if(vector_z.GetCosBetween(up_vec)<-sidelength/PerspectiveDistance/2)   // 画下面
+        DrawBar_Vert(vector_x,vector_y,[vertex[0],vertex[1],vertex[2],vertex[3]],colorarr[2],pericenter);
+
+    if(vector_z.GetCosBetween(back_vec)>sidelength/PerspectiveDistance/2) // 画后面
+        DrawBar_Vert(vector_x,vector_y,[vertex[3],vertex[2],vertex[6],vertex[7]],colorarr[1],pericenter);
+    else if(vector_z.GetCosBetween(back_vec)<-sidelength/PerspectiveDistance/2)   // 画前面
+        DrawBar_Vert(vector_x,vector_y,[vertex[0],vertex[1],vertex[5],vertex[4]],colorarr[3],pericenter);
+
+    if(vector_z.xx>sidelength/PerspectiveDistance/2)    // 画右面
+        DrawSurface(vector_x,vector_y,[vertex[1],vertex[2],vertex[6],vertex[5]],ninecolor[1],pericenter);
+    else if(vector_z.xx<-sidelength/PerspectiveDistance/2)  // 画左面
+        DrawSurface(vector_x,vector_y,[vertex[0],vertex[3],vertex[7],vertex[4]],ninecolor[0],pericenter);
+}
+
+function DrawLayer_Straight(vector_x,vector_y,vertex,pericenter,colorarr,ninecolor)
+{
+    var vector_z=vector_x.CrossMul(vector_y);
+    // 我目前想不出更好的方法，还是沿用先前的创造
+    var up_vec=vertex[4].Sub(vertex[0]);
+    var right_vec=vertex[1].Sub(vertex[0]);
+
+    if(vector_z.GetCosBetween(up_vec)>sidelength/PerspectiveDistance/2) // 画上面
+        DrawBar_Hori(vector_x,vector_y,[vertex[4],vertex[5],vertex[6],vertex[7]],colorarr[0],pericenter);
+    else if(vector_z.GetCosBetween(up_vec)<-sidelength/PerspectiveDistance/2)   // 画下面
+        DrawBar_Hori(vector_x,vector_y,[vertex[0],vertex[1],vertex[2],vertex[3]],colorarr[2],pericenter);
+
+    if(vector_z.GetCosBetween(right_vec)>sidelength/PerspectiveDistance/2) // 画右面
+        DrawBar_Vert(vector_x,vector_y,[vertex[1],vertex[2],vertex[6],vertex[5]],colorarr[1],pericenter);
+    else if(vector_z.GetCosBetween(right_vec)<-sidelength/PerspectiveDistance/2)   // 画左面
+        DrawBar_Vert(vector_x,vector_y,[vertex[0],vertex[3],vertex[7],vertex[4]],colorarr[3],pericenter);
+    
+    if(vector_z.yy>sidelength/PerspectiveDistance/2)    // 画背面
+        DrawSurface(vector_x,vector_y,[vertex[3],vertex[2],vertex[6],vertex[7]],ninecolor[1],pericenter);
+    else if(vector_z.yy<-sidelength/PerspectiveDistance/2)  // 画前面
+        DrawSurface(vector_x,vector_y,[vertex[0],vertex[1],vertex[5],vertex[4]],ninecolor[0],pericenter);
+}
+
+function DrawLayer_Vertical(vector_x,vector_y,vertex,pericenter,colorarr,ninecolor)
+{
+    var vector_z=vector_x.CrossMul(vector_y);
+    // 我目前想不出更好的方法，还是沿用先前的创造
+    var up_vec=vertex[3].Sub(vertex[0]);
+    var right_vec=vertex[1].Sub(vertex[0]);
+
+    if(vector_z.GetCosBetween(up_vec)>sidelength/PerspectiveDistance/2) // 画背面
+        DrawBar_Hori(vector_x,vector_y,[vertex[3],vertex[2],vertex[6],vertex[7]],colorarr[0],pericenter);
+    else if(vector_z.GetCosBetween(up_vec)<-sidelength/PerspectiveDistance/2)   // 画前面
+        DrawBar_Hori(vector_x,vector_y,[vertex[0],vertex[1],vertex[5],vertex[4]],colorarr[2],pericenter);
+
+    if(vector_z.GetCosBetween(right_vec)>sidelength/PerspectiveDistance/2) // 画右面
+        DrawBar_Hori(vector_x,vector_y,[vertex[1],vertex[2],vertex[6],vertex[5]],colorarr[1],pericenter);
+    else if(vector_z.GetCosBetween(right_vec)<-sidelength/PerspectiveDistance/2)   // 画左面
+        DrawBar_Hori(vector_x,vector_y,[vertex[0],vertex[3],vertex[7],vertex[4]],colorarr[3],pericenter);
+    
+    if(vector_z.zz>sidelength/PerspectiveDistance/2)    // 画上面
+        DrawSurface(vector_x,vector_y,[vertex[4],vertex[5],vertex[6],vertex[7]],ninecolor[1],pericenter);
+    else if(vector_z.zz<-sidelength/PerspectiveDistance/2)  // 画下面
+        DrawSurface(vector_x,vector_y,[vertex[0],vertex[1],vertex[2],vertex[3]],ninecolor[0],pericenter);
+}
+
+function CrossRotationAxis(vector_x,vector_y,vertex,colorarr,pericenter,layer,angle)
+{
+    var temp_vertex=[[],[],[]];
+    var colorarr_bar=[[[],[],[],[]],[[],[],[],[]],[[],[],[],[]]];
+    var colorarr_nine=[[[],[]],[[],[]],[[],[]]];
+    var add_x=vertex[1].Sub(vertex[0]).Div(3);
+    for(var i=0;i<3;i++)
+    {
+        temp_vertex[i]=[vertex[0].Add(add_x.MulTimes(i)),vertex[0].Add(add_x.MulTimes(i+1)),
+                        vertex[3].Add(add_x.MulTimes(i+1)),vertex[3].Add(add_x.MulTimes(i)),
+                        vertex[4].Add(add_x.MulTimes(i)),vertex[4].Add(add_x.MulTimes(i+1)),
+                        vertex[7].Add(add_x.MulTimes(i+1)),vertex[7].Add(add_x.MulTimes(i))];
+        if(i==layer)
+        {
+            for(var j=0;j<8;j++)    // 更新点
+            {
+                var temp_yy=temp_vertex[i][j].yy*Math.cos(angle)-temp_vertex[i][j].zz*Math.sin(angle);
+                var temp_zz=temp_vertex[i][j].yy*Math.sin(angle)+temp_vertex[i][j].zz*Math.cos(angle);
+                temp_vertex[i][j].yy=temp_yy;
+                temp_vertex[i][j].zz=temp_zz;
+            }
+        }
+        
+        for(var j=0;j<3;j++)
+        {
+            colorarr_bar[i][0].push(colorarr[up][j*3+i]);
+            colorarr_bar[i][1].push(colorarr[back][j*3+i]);
+            colorarr_bar[i][2].push(colorarr[down][j*3+i]);
+            colorarr_bar[i][3].push(colorarr[front][j*3+i]);
+        }
+
+        for(var j=0;j<9;j++)
+        {
+            colorarr_nine[i][0].push('#000000');
+            colorarr_nine[i][1].push('#000000');
+        }
+        // 0 左 1 右
+        if(i==0)
+        {
+            for(var j=0;j<9;j++)    // 侧边有颜色
+                colorarr_nine[i][0][j]=colorarr[left][j];
+        }
+        else if(i==2)
+        {
+            for(var j=0;j<9;j++)    // 侧边有颜色
+                colorarr_nine[i][1][j]=colorarr[right][j];
+        }
+    }
+    // 入栈信息保存完毕
+    var vector_z=vector_x.CrossMul(vector_y);
+    if(vector_z.xx>0)
+    {
+        for(var i=0;i<3;i++)
+        {
+            DrawLayer_Across(vector_x,vector_y,temp_vertex[i],pericenter,colorarr_bar[i],colorarr_nine[i]);
+        }
+    }
+    else
+    {
+        for(var i=2;i>=0;i--)
+        {
+            DrawLayer_Across(vector_x,vector_y,temp_vertex[i],pericenter,colorarr_bar[i],colorarr_nine[i]);
+        }
+    }
+}
+
+function StraightRotationAxis(vector_x,vector_y,vertex,colorarr,pericenter,layer,angle)
+{
+    var temp_vertex=[[],[],[]];
+    var colorarr_bar=[[[],[],[],[]],[[],[],[],[]],[[],[],[],[]]];
+    var colorarr_nine=[[[],[]],[[],[]],[[],[]]];
+    var add_y=vertex[3].Sub(vertex[0]).Div(3);
+    for(var i=0;i<3;i++)
+    {
+        temp_vertex[i]=[vertex[0].Add(add_y.MulTimes(i)),vertex[1].Add(add_y.MulTimes(i)),
+                        vertex[1].Add(add_y.MulTimes(i+1)),vertex[0].Add(add_y.MulTimes(i+1)),
+                        vertex[4].Add(add_y.MulTimes(i)),vertex[5].Add(add_y.MulTimes(i)),
+                        vertex[5].Add(add_y.MulTimes(i+1)),vertex[4].Add(add_y.MulTimes(i+1))];
+        if(i==layer)
+        {
+            for(var j=0;j<8;j++)    // 更新点
+            {
+                // 这里不清楚为什么，感觉符号不太对
+                var temp_xx=temp_vertex[i][j].xx*Math.cos(angle)+temp_vertex[i][j].zz*Math.sin(angle);
+                var temp_zz=-temp_vertex[i][j].xx*Math.sin(angle)+temp_vertex[i][j].zz*Math.cos(angle);
+                temp_vertex[i][j].xx=temp_xx;
+                temp_vertex[i][j].zz=temp_zz;
+            }
+        }
+        
+        for(var j=0;j<3;j++)
+        {
+            colorarr_bar[i][0].push(colorarr[up][j+i*3]);
+            colorarr_bar[i][1].push(colorarr[right][j*3+i]);
+            colorarr_bar[i][2].push(colorarr[down][j+i*3]);
+            colorarr_bar[i][3].push(colorarr[left][j*3+i]);
+        }
+
+        for(var j=0;j<9;j++)
+        {
+            colorarr_nine[i][0].push('#000000');
+            colorarr_nine[i][1].push('#000000');
+        }
+        // 0 前 1 后
+        if(i==0)
+        {
+            for(var j=0;j<9;j++)    // 侧边有颜色
+                colorarr_nine[i][0][j]=colorarr[front][j];
+        }
+        else if(i==2)
+        {
+            for(var j=0;j<9;j++)    // 侧边有颜色
+                colorarr_nine[i][1][j]=colorarr[back][j];
+        }
+    }
+    // 入栈信息保存完毕
+    var vector_z=vector_x.CrossMul(vector_y);
+    if(vector_z.yy>0)
+    {
+        for(var i=0;i<3;i++)
+        {
+            DrawLayer_Straight(vector_x,vector_y,temp_vertex[i],pericenter,colorarr_bar[i],colorarr_nine[i]);
+        }
+    }
+    else
+    {
+        for(var i=2;i>=0;i--)
+        {
+            DrawLayer_Straight(vector_x,vector_y,temp_vertex[i],pericenter,colorarr_bar[i],colorarr_nine[i]);
+        }
+    }
+}
+
+function VerticalRotationAxis(vector_x,vector_y,vertex,colorarr,pericenter,layer,angle)
+{
+    var temp_vertex=[[],[],[]];
+    var colorarr_bar=[[[],[],[],[]],[[],[],[],[]],[[],[],[],[]]];
+    var colorarr_nine=[[[],[]],[[],[]],[[],[]]];
+    var add_z=vertex[4].Sub(vertex[0]).Div(3);
+    for(var i=0;i<3;i++)
+    {
+        temp_vertex[i]=[vertex[0].Add(add_z.MulTimes(i)),vertex[1].Add(add_z.MulTimes(i)),
+                        vertex[2].Add(add_z.MulTimes(i)),vertex[3].Add(add_z.MulTimes(i)),
+                        vertex[0].Add(add_z.MulTimes(i+1)),vertex[1].Add(add_z.MulTimes(i+1)),
+                        vertex[2].Add(add_z.MulTimes(i+1)),vertex[3].Add(add_z.MulTimes(i+1))];
+        if(i==layer)
+        {
+            for(var j=0;j<8;j++)    // 更新点
+            {
+                // 这里不清楚为什么，感觉符号不太对
+                var temp_xx=temp_vertex[i][j].xx*Math.cos(angle)-temp_vertex[i][j].yy*Math.sin(angle);
+                var temp_yy=temp_vertex[i][j].xx*Math.sin(angle)+temp_vertex[i][j].yy*Math.cos(angle);
+                temp_vertex[i][j].xx=temp_xx;
+                temp_vertex[i][j].yy=temp_yy;
+            }
+        }
+        
+        for(var j=0;j<3;j++)
+        {
+            colorarr_bar[i][0].push(colorarr[back][j+i*3]);
+            colorarr_bar[i][1].push(colorarr[right][j+i*3]);
+            colorarr_bar[i][2].push(colorarr[front][j+i*3]);
+            colorarr_bar[i][3].push(colorarr[left][j+i*3]);
+        }
+
+        for(var j=0;j<9;j++)
+        {
+            colorarr_nine[i][0].push('#000000');
+            colorarr_nine[i][1].push('#000000');
+        }
+        // 0 下 1 上
+        if(i==0)
+        {
+            for(var j=0;j<9;j++)    // 侧边有颜色
+                colorarr_nine[i][0][j]=colorarr[down][j];
+        }
+        else if(i==2)
+        {
+            for(var j=0;j<9;j++)    // 侧边有颜色
+                colorarr_nine[i][1][j]=colorarr[up][j];
+        }
+    }
+    // 入栈信息保存完毕
+    var vector_z=vector_x.CrossMul(vector_y);
+    if(vector_z.zz>0)
+    {
+        for(var i=0;i<3;i++)
+        {
+            DrawLayer_Vertical(vector_x,vector_y,temp_vertex[i],pericenter,colorarr_bar[i],colorarr_nine[i]);
+        }
+    }
+    else
+    {
+        for(var i=2;i>=0;i--)
+        {
+            DrawLayer_Vertical(vector_x,vector_y,temp_vertex[i],pericenter,colorarr_bar[i],colorarr_nine[i]);
+        }
+    }
+}
+
+function DrawRotateCube(vector_x,vector_y,vertex,colorarr,pericenter,rotatepoint,angle)
+{
+    line_color='#ffffff';
+    if(rotatepoint.axis==across)
+    {
+        CrossRotationAxis(vector_x,vector_y,vertex,colorarr,pericenter,rotatepoint.layer,angle);
+    }
+    else if(rotatepoint.axis==straight)
+    {
+        StraightRotationAxis(vector_x,vector_y,vertex,colorarr,pericenter,rotatepoint.layer,angle);
+    }
+    else if(rotatepoint.axis==vertical)
+    {
+        VerticalRotationAxis(vector_x,vector_y,vertex,colorarr,pericenter,rotatepoint.layer,angle);
+    }
+}
+
+function RotateSurfaceColor_clock(surfaceindex)
+{
+    var tempcolor=SurfaceColorArray[surfaceindex][0];
+    SurfaceColorArray[surfaceindex][0]=SurfaceColorArray[surfaceindex][2];
+    SurfaceColorArray[surfaceindex][2]=SurfaceColorArray[surfaceindex][8];
+    SurfaceColorArray[surfaceindex][8]=SurfaceColorArray[surfaceindex][6];
+    SurfaceColorArray[surfaceindex][6]=tempcolor;
+
+    tempcolor=SurfaceColorArray[surfaceindex][1];
+    SurfaceColorArray[surfaceindex][1]=SurfaceColorArray[surfaceindex][5];
+    SurfaceColorArray[surfaceindex][5]=SurfaceColorArray[surfaceindex][7];
+    SurfaceColorArray[surfaceindex][7]=SurfaceColorArray[surfaceindex][3];
+    SurfaceColorArray[surfaceindex][3]=tempcolor;
+}
+
+function RotateSurfaceColor_uclock(surfaceindex)
+{
+    var tempcolor=SurfaceColorArray[surfaceindex][0];
+    SurfaceColorArray[surfaceindex][0]=SurfaceColorArray[surfaceindex][6];
+    SurfaceColorArray[surfaceindex][6]=SurfaceColorArray[surfaceindex][8];
+    SurfaceColorArray[surfaceindex][8]=SurfaceColorArray[surfaceindex][2];
+    SurfaceColorArray[surfaceindex][2]=tempcolor;
+
+    tempcolor=SurfaceColorArray[surfaceindex][1];
+    SurfaceColorArray[surfaceindex][1]=SurfaceColorArray[surfaceindex][3];
+    SurfaceColorArray[surfaceindex][3]=SurfaceColorArray[surfaceindex][7];
+    SurfaceColorArray[surfaceindex][7]=SurfaceColorArray[surfaceindex][5];
+    SurfaceColorArray[surfaceindex][5]=tempcolor;
+}
+
+// 顺时针转一次
+function UpdateColor_clock(rotatepoint)
+{
+    if(rotatepoint.axis==across)
+    {
+        var temp_up=[SurfaceColorArray[up][0*3+rotatepoint.layer],SurfaceColorArray[up][1*3+rotatepoint.layer],
+            SurfaceColorArray[up][2*3+rotatepoint.layer]];
+
+        SurfaceColorArray[up][0*3+rotatepoint.layer]=SurfaceColorArray[front][0*3+rotatepoint.layer];
+        SurfaceColorArray[up][1*3+rotatepoint.layer]=SurfaceColorArray[front][1*3+rotatepoint.layer];
+        SurfaceColorArray[up][2*3+rotatepoint.layer]=SurfaceColorArray[front][2*3+rotatepoint.layer];
+
+        SurfaceColorArray[front][0*3+rotatepoint.layer]=SurfaceColorArray[down][2*3+rotatepoint.layer];
+        SurfaceColorArray[front][1*3+rotatepoint.layer]=SurfaceColorArray[down][1*3+rotatepoint.layer];
+        SurfaceColorArray[front][2*3+rotatepoint.layer]=SurfaceColorArray[down][0*3+rotatepoint.layer];
+
+        SurfaceColorArray[down][0*3+rotatepoint.layer]=SurfaceColorArray[back][0*3+rotatepoint.layer];
+        SurfaceColorArray[down][1*3+rotatepoint.layer]=SurfaceColorArray[back][1*3+rotatepoint.layer];
+        SurfaceColorArray[down][2*3+rotatepoint.layer]=SurfaceColorArray[back][2*3+rotatepoint.layer];
+
+        SurfaceColorArray[back][0*3+rotatepoint.layer]=temp_up[2];
+        SurfaceColorArray[back][1*3+rotatepoint.layer]=temp_up[1];
+        SurfaceColorArray[back][2*3+rotatepoint.layer]=temp_up[0];
+
+        if(rotatepoint.layer==0)
+        {
+            RotateSurfaceColor_clock(left);
+        }
+        else if(rotatepoint.layer==2)
+        {
+            RotateSurfaceColor_clock(right);
+        }
+    }
+    else if(rotatepoint.axis==straight)     // 关于y轴旋转时，由于我全程右手坐标系，而显示全程左手左边系，所以为了转化一下，这个地方要相反
+    {
+        var temp_up=[SurfaceColorArray[up][0+rotatepoint.layer*3],SurfaceColorArray[up][1+rotatepoint.layer*3],
+            SurfaceColorArray[up][2+rotatepoint.layer*3]];
+
+        SurfaceColorArray[up][0+rotatepoint.layer*3]=SurfaceColorArray[right][2*3+rotatepoint.layer];
+        SurfaceColorArray[up][1+rotatepoint.layer*3]=SurfaceColorArray[right][1*3+rotatepoint.layer];
+        SurfaceColorArray[up][2+rotatepoint.layer*3]=SurfaceColorArray[right][0*3+rotatepoint.layer];
+
+        SurfaceColorArray[right][0*3+rotatepoint.layer]=SurfaceColorArray[down][0+rotatepoint.layer*3];
+        SurfaceColorArray[right][1*3+rotatepoint.layer]=SurfaceColorArray[down][1+rotatepoint.layer*3];
+        SurfaceColorArray[right][2*3+rotatepoint.layer]=SurfaceColorArray[down][2+rotatepoint.layer*3];
+
+        SurfaceColorArray[down][0+rotatepoint.layer*3]=SurfaceColorArray[left][2*3+rotatepoint.layer];
+        SurfaceColorArray[down][1+rotatepoint.layer*3]=SurfaceColorArray[left][1*3+rotatepoint.layer];
+        SurfaceColorArray[down][2+rotatepoint.layer*3]=SurfaceColorArray[left][0*3+rotatepoint.layer];
+
+        SurfaceColorArray[left][0*3+rotatepoint.layer]=temp_up[0];
+        SurfaceColorArray[left][1*3+rotatepoint.layer]=temp_up[1];
+        SurfaceColorArray[left][2*3+rotatepoint.layer]=temp_up[2];
+
+        if(rotatepoint.layer==0)
+        {
+            RotateSurfaceColor_uclock(front);
+        }
+        else if(rotatepoint.layer==2)
+        {
+            RotateSurfaceColor_uclock(back);
+        }
+    }
+    else if(rotatepoint.axis==vertical)
+    {
+        var temp_back=[SurfaceColorArray[back][0+rotatepoint.layer*3],SurfaceColorArray[back][1+rotatepoint.layer*3],
+            SurfaceColorArray[back][2+rotatepoint.layer*3]];
+
+        SurfaceColorArray[back][0+rotatepoint.layer*3]=SurfaceColorArray[left][0+rotatepoint.layer*3];
+        SurfaceColorArray[back][1+rotatepoint.layer*3]=SurfaceColorArray[left][1+rotatepoint.layer*3];
+        SurfaceColorArray[back][2+rotatepoint.layer*3]=SurfaceColorArray[left][2+rotatepoint.layer*3];
+
+        SurfaceColorArray[left][0+rotatepoint.layer*3]=SurfaceColorArray[front][2+rotatepoint.layer*3];
+        SurfaceColorArray[left][1+rotatepoint.layer*3]=SurfaceColorArray[front][1+rotatepoint.layer*3];
+        SurfaceColorArray[left][2+rotatepoint.layer*3]=SurfaceColorArray[front][0+rotatepoint.layer*3];
+
+        SurfaceColorArray[front][0+rotatepoint.layer*3]=SurfaceColorArray[right][0+rotatepoint.layer*3];
+        SurfaceColorArray[front][1+rotatepoint.layer*3]=SurfaceColorArray[right][1+rotatepoint.layer*3];
+        SurfaceColorArray[front][2+rotatepoint.layer*3]=SurfaceColorArray[right][2+rotatepoint.layer*3];
+
+        SurfaceColorArray[right][0+rotatepoint.layer*3]=temp_back[2];
+        SurfaceColorArray[right][1+rotatepoint.layer*3]=temp_back[1];
+        SurfaceColorArray[right][2+rotatepoint.layer*3]=temp_back[0];
+
+        if(rotatepoint.layer==0)
+        {
+            RotateSurfaceColor_clock(down);
+        }
+        else if(rotatepoint.layer==2)
+        {
+            RotateSurfaceColor_clock(up);
+        }
+    }
+}
+
+// 逆时针转一次
+function UpdateColor_uclock(rotatepoint)
+{
+    if(rotatepoint.axis==across)
+    {
+        var temp_up=[SurfaceColorArray[up][0*3+rotatepoint.layer],SurfaceColorArray[up][1*3+rotatepoint.layer],
+            SurfaceColorArray[up][2*3+rotatepoint.layer]];
+
+        SurfaceColorArray[up][0*3+rotatepoint.layer]=SurfaceColorArray[back][2*3+rotatepoint.layer];
+        SurfaceColorArray[up][1*3+rotatepoint.layer]=SurfaceColorArray[back][1*3+rotatepoint.layer];
+        SurfaceColorArray[up][2*3+rotatepoint.layer]=SurfaceColorArray[back][0*3+rotatepoint.layer];
+
+        SurfaceColorArray[back][0*3+rotatepoint.layer]=SurfaceColorArray[down][0*3+rotatepoint.layer];
+        SurfaceColorArray[back][1*3+rotatepoint.layer]=SurfaceColorArray[down][1*3+rotatepoint.layer];
+        SurfaceColorArray[back][2*3+rotatepoint.layer]=SurfaceColorArray[down][2*3+rotatepoint.layer];
+
+        SurfaceColorArray[down][0*3+rotatepoint.layer]=SurfaceColorArray[front][2*3+rotatepoint.layer];
+        SurfaceColorArray[down][1*3+rotatepoint.layer]=SurfaceColorArray[front][1*3+rotatepoint.layer];
+        SurfaceColorArray[down][2*3+rotatepoint.layer]=SurfaceColorArray[front][0*3+rotatepoint.layer];
+
+        SurfaceColorArray[front][0*3+rotatepoint.layer]=temp_up[0];
+        SurfaceColorArray[front][1*3+rotatepoint.layer]=temp_up[1];
+        SurfaceColorArray[front][2*3+rotatepoint.layer]=temp_up[2];
+
+        if(rotatepoint.layer==0)
+        {
+            RotateSurfaceColor_uclock(left);
+        }
+        else if(rotatepoint.layer==2)
+        {
+            RotateSurfaceColor_uclock(right);
+        }
+    }
+    else if(rotatepoint.axis==straight)
+    {
+        var temp_up=[SurfaceColorArray[up][0+rotatepoint.layer*3],SurfaceColorArray[up][1+rotatepoint.layer*3],
+            SurfaceColorArray[up][2+rotatepoint.layer*3]];
+
+        SurfaceColorArray[up][0+rotatepoint.layer*3]=SurfaceColorArray[left][0*3+rotatepoint.layer];
+        SurfaceColorArray[up][1+rotatepoint.layer*3]=SurfaceColorArray[left][1*3+rotatepoint.layer];
+        SurfaceColorArray[up][2+rotatepoint.layer*3]=SurfaceColorArray[left][2*3+rotatepoint.layer];
+
+        SurfaceColorArray[left][0*3+rotatepoint.layer]=SurfaceColorArray[down][2+rotatepoint.layer*3];
+        SurfaceColorArray[left][1*3+rotatepoint.layer]=SurfaceColorArray[down][1+rotatepoint.layer*3];
+        SurfaceColorArray[left][2*3+rotatepoint.layer]=SurfaceColorArray[down][0+rotatepoint.layer*3];
+
+        SurfaceColorArray[down][0+rotatepoint.layer*3]=SurfaceColorArray[right][0*3+rotatepoint.layer];
+        SurfaceColorArray[down][1+rotatepoint.layer*3]=SurfaceColorArray[right][1*3+rotatepoint.layer];
+        SurfaceColorArray[down][2+rotatepoint.layer*3]=SurfaceColorArray[right][2*3+rotatepoint.layer];
+
+        SurfaceColorArray[right][0*3+rotatepoint.layer]=temp_up[2];
+        SurfaceColorArray[right][1*3+rotatepoint.layer]=temp_up[1];
+        SurfaceColorArray[right][2*3+rotatepoint.layer]=temp_up[0];
+
+        if(rotatepoint.layer==0)
+        {
+            RotateSurfaceColor_clock(front);
+        }
+        else if(rotatepoint.layer==2)
+        {
+            RotateSurfaceColor_clock(back);
+        }
+    }
+    else if(rotatepoint.axis==vertical)
+    {
+        var temp_back=[SurfaceColorArray[back][0+rotatepoint.layer*3],SurfaceColorArray[back][1+rotatepoint.layer*3],
+            SurfaceColorArray[back][2+rotatepoint.layer*3]];
+
+        SurfaceColorArray[back][0+rotatepoint.layer*3]=SurfaceColorArray[right][2+rotatepoint.layer*3];
+        SurfaceColorArray[back][1+rotatepoint.layer*3]=SurfaceColorArray[right][1+rotatepoint.layer*3];
+        SurfaceColorArray[back][2+rotatepoint.layer*3]=SurfaceColorArray[right][0+rotatepoint.layer*3];
+
+        SurfaceColorArray[right][0+rotatepoint.layer*3]=SurfaceColorArray[front][0+rotatepoint.layer*3];
+        SurfaceColorArray[right][1+rotatepoint.layer*3]=SurfaceColorArray[front][1+rotatepoint.layer*3];
+        SurfaceColorArray[right][2+rotatepoint.layer*3]=SurfaceColorArray[front][2+rotatepoint.layer*3];
+
+        SurfaceColorArray[front][0+rotatepoint.layer*3]=SurfaceColorArray[left][2+rotatepoint.layer*3];
+        SurfaceColorArray[front][1+rotatepoint.layer*3]=SurfaceColorArray[left][1+rotatepoint.layer*3];
+        SurfaceColorArray[front][2+rotatepoint.layer*3]=SurfaceColorArray[left][0+rotatepoint.layer*3];
+
+        SurfaceColorArray[left][0+rotatepoint.layer*3]=temp_back[0];
+        SurfaceColorArray[left][1+rotatepoint.layer*3]=temp_back[1];
+        SurfaceColorArray[left][2+rotatepoint.layer*3]=temp_back[2];
+
+        if(rotatepoint.layer==0)
+        {
+            RotateSurfaceColor_uclock(down);
+        }
+        else if(rotatepoint.layer==2)
+        {
+            RotateSurfaceColor_uclock(up);
+        }
+    }
+}
+
+function InitColorArray()
+{
+    SurfaceColorArray=[];
+    for(var i=0;i<6;i++)
+    {
+        SurfaceColorArray.push([]);
+        for(var j=0;j<9;j++)
+        {
+            SurfaceColorArray[i].push(SurfaceColor[i]);
+        }
+    }
+}
+
+function DislocateCube()
+{
+    for(var i=0;i<20;i++)
+    {
+        Math.random();  // 获得0~1之间的随机数
+        Math.floor();   // 获得比num小的最大整数
+        var rand_rotatepoint={axis:Math.floor(Math.random()*3),layer:Math.floor(Math.random()*3)};
+        for(var j=0;j<Math.floor(Math.random()*3)+1;j++)
+        {
+            UpdateColor_clock(rand_rotatepoint);
+        }
+    }
+}
+
+var Vector_X=new Vec3(1,0,0);
+var Vector_Y=new Vec3(0,1,0);
+var Vertex=[new Vec3(-sidelength/2,-sidelength/2,-sidelength/2),new Vec3(sidelength/2,-sidelength/2,-sidelength/2),
+            new Vec3(sidelength/2,sidelength/2,-sidelength/2),new Vec3(-sidelength/2,sidelength/2,-sidelength/2),
+            new Vec3(-sidelength/2,-sidelength/2,sidelength/2),new Vec3(sidelength/2,-sidelength/2,sidelength/2),
+            new Vec3(sidelength/2,sidelength/2,sidelength/2),new Vec3(-sidelength/2,sidelength/2,sidelength/2)];
+var SurfaceColorArray=[];
+var clickplane={surface:-1,index:-1};
+var rotatepoint={axis:-1,layer:-1};
+var rotate_peri_vec2;
+var angle_finalrotate=0;
+InitColorArray();
+var pericenter=new Vec2(320,240);
+function main_func()
+{
+    InitCanvas();
+    DrawCube(Vector_X,Vector_Y,Vertex,SurfaceColorArray,pericenter);
+}
+
+function rotate_main_func(angle)
+{
+    InitCanvas();
+    DrawRotateCube(Vector_X,Vector_Y,Vertex,SurfaceColorArray,pericenter,rotatepoint,angle);
+}
+
+function GetMousePos(event)
+{
+    var canvas=document.getElementById('canvas');
+    var xx=event.clientX-(canvas.offsetLeft-canvas.clientWidth/2)+document.documentElement.scrollLeft+document.body.scrollLeft;
+    var yy=event.clientY-(canvas.offsetTop-canvas.clientHeight/2)+document.documentElement.scrollTop+document.body.scrollTop;
+    return {xx:xx,yy:yy};
+}
+
+function MouseMove(event)
+{
+    var pos=GetMousePos(event);
+    if(LButton==false)
+    {
+        //PutPixel(pos.x,pos.y,'#00ff00');
+    }
+    else
+    {
+        if(clickplane.surface==-1||clickplane.index==-1)
+        {
+            var angle=(pos.xx-mouse_place.xx)/GAMEPAD*Math.PI/3;
+            if(!isNaN(angle))
+                Vector_X=Rotate_Across_Hor(Vector_X,Vector_Y,angle);
+            angle=(pos.yy-mouse_place.yy)/GAMEPAD*Math.PI/3;
+            if(!isNaN(angle))
+                Vector_Y=Rotate_Across_Ver(Vector_X,Vector_Y,angle);
+            main_func();
+            mouse_place.xx=pos.xx;
+            mouse_place.yy=pos.yy;
+        }
+        else if(rotatepoint.axis==-1||rotatepoint.layer==-1)
+        {
+            var moveVec=Vector_X.MulTimes(pos.xx-mouse_place.xx).Add(Vector_Y.MulTimes(pos.yy-mouse_place.yy));   // 移动的三维向量
+            if(clickplane.surface==up||clickplane.surface==down)
+            {
+                if(Math.abs(moveVec.xx)>Math.abs(moveVec.yy)&&Math.abs(moveVec.xx)>GAMEPAD/3)
+                {
+                    rotatepoint.axis=straight;
+                    rotatepoint.layer=parseInt(clickplane.index/3);
+                }
+                else if(Math.abs(moveVec.yy)>Math.abs(moveVec.xx)&&Math.abs(moveVec.yy)>GAMEPAD/3)
+                {
+                    rotatepoint.axis=across;
+                    rotatepoint.layer=clickplane.index%3;
+                }
+            }
+            else if(clickplane.surface==left||clickplane.surface==right)
+            {
+                if(Math.abs(moveVec.yy)>Math.abs(moveVec.zz)&&Math.abs(moveVec.yy)>GAMEPAD/3)
+                {
+                    rotatepoint.axis=vertical;
+                    rotatepoint.layer=parseInt(clickplane.index/3);
+                }
+                else if(Math.abs(moveVec.zz)>Math.abs(moveVec.yy)&&Math.abs(moveVec.zz)>GAMEPAD/3)
+                {
+                    rotatepoint.axis=straight;
+                    rotatepoint.layer=clickplane.index%3;
+                }
+            }
+            else if(clickplane.surface==front||clickplane.surface==back)
+            {
+                if(Math.abs(moveVec.xx)>Math.abs(moveVec.zz)&&Math.abs(moveVec.xx)>GAMEPAD/3)
+                {
+                    rotatepoint.axis=vertical;
+                    rotatepoint.layer=parseInt(clickplane.index/3);
+                }
+                else if(Math.abs(moveVec.zz)>Math.abs(moveVec.xx)&&Math.abs(moveVec.zz)>GAMEPAD/3)
+                {
+                    rotatepoint.axis=across;
+                    rotatepoint.layer=clickplane.index%3;
+                }
+            }
+            var rotate_peri_vec3=new Vec3(0,0,0);
+            var add_vec3;
+            if(rotatepoint.axis==across)add_vec3=new Vec3(sidelength/2,0,0);
+            else if(rotatepoint.axis==straight)add_vec3=new Vec3(0,sidelength/2,0);
+            else if(rotatepoint.axis=vertical)add_vec3=new Vec3(0,0,sidelength/2);
+            rotate_peri_vec3=rotate_peri_vec3.Add(add_vec3.MulTimes(rotatepoint.layer-1));
+            rotate_peri_vec2=TransformVec3ToVec2(Vector_X,Vector_Y,rotate_peri_vec3).Add(pericenter);
+            begin_vec=(new Vec2(mouse_place.xx,mouse_place.yy)).Sub(rotate_peri_vec2);
+        }
+        else
+        {
+            // 可以优化，旋转中心点到起始点的向量为起始向量
+            // 根据旋转轴和layer求出旋转中心点，旋转中心点有7个
+            //var moveVec=Vector_X.MulTimes(pos.xx-mouse_place.xx).Add(Vector_Y.MulTimes(pos.yy-mouse_place.yy));   // 移动的三维向量
+            // 左是逆时针
+            var end_vec=(new Vec2(pos.xx,pos.yy)).Sub(rotate_peri_vec2);
+            var vector_z=Vector_X.CrossMul(Vector_Y);
+            if(end_vec.yy*begin_vec.xx-end_vec.xx*begin_vec.yy>0)   //在左边
+            {
+                angle_finalrotate=Math.acos(begin_vec.GetCosBetween(end_vec));
+            }
+            else  //在右边
+            {
+                angle_finalrotate=-Math.acos(begin_vec.GetCosBetween(end_vec));
+            }
+            if(rotatepoint.axis==across&&vector_z.xx<0)angle_finalrotate=-angle_finalrotate;
+            else if(rotatepoint.axis==straight&&vector_z.yy<0)angle_finalrotate=-angle_finalrotate;
+            else if(rotatepoint.axis==vertical&&vector_z.zz<0)angle_finalrotate=-angle_finalrotate;
+            rotate_main_func(angle_finalrotate);
+            //fill_color='#de1760';
+            //FillRectangle({xx:rotate_peri_vec2.xx,yy:rotate_peri_vec2.yy},{width:10,height:10});
+        }
+    }
+}
+
+function MouseDown(event)
+{
+    LButton=true;
+    mouse_place=GetMousePos(event);
+    clickplane=GetPlaneIndex(Vector_X,Vector_Y,mouse_place.xx,mouse_place.yy,Vertex,pericenter);
+}
+
+function MouseUp(event)
+{
+    LButton=false;
+    // 松开鼠标时更新颜色数组
+    // 根据angle值更新颜色数组
+    // 原先为了显示正确对法向量值为负数的旋转做了相反处理，这里应该还原角度
+    // 角度绝对是正确的
+    if(Math.abs(angle_finalrotate)>Math.PI/3)
+    {
+        if(angle_finalrotate>0)
+        {
+            UpdateColor_uclock(rotatepoint);
+        }
+        else if(angle_finalrotate<0)
+        {
+            UpdateColor_clock(rotatepoint);
+        }
+    }
+    if(Math.abs(angle_finalrotate)>Math.PI*2/3)
+    {
+        if(angle_finalrotate>0)
+        {
+            UpdateColor_uclock(rotatepoint);
+        }
+        else if(angle_finalrotate<0)
+        {
+            UpdateColor_clock(rotatepoint);
+        }
+    }
+    rotatepoint={axis:-1,layer:-1};
+    clickplane={index:-1,surface:-1};
+    angle_finalrotate=0;
+    main_func();
+}
+    </script>
+    <style>
+#canvas{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    border: 2px solid #0bacbf;
+}
+
+#dislocate{
+    position: absolute;
+    width: 100px;
+    height: 60px;
+    left: 0%;
+    top: 100%;
+    transform: translate(0,-100%);
+    background-color: aquamarine;
+}
+
+#restore{
+    position: absolute;
+    width: 100px;
+    height: 60px;
+    left: 100%;
+    top: 100%;
+    transform: translate(-100%,-100%);
+    background-color: aquamarine;
+}
+    </style>
+    <title>Document</title>
+</head>
+<body>
+    
+    <button id="restore" onclick="InitColorArray();main_func();">还原</button>
+    <button id="dislocate" onclick="DislocateCube();main_func();">打乱</button>
+    <canvas id="canvas" width="640" height="480" onmousemove="MouseMove(event)"
+    onmousedown="MouseDown(event)" onmouseup="MouseUp(event)">你的浏览器不支持canvas标签</canvas>
+    <script>
+        main_func();
+    </script>
+</body>
+</html>
